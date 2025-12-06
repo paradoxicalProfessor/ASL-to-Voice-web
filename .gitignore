@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -14,12 +15,43 @@ ENV/
 env/
 .conda/
 *.log
+
+# IDE
 .DS_Store
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Training runs (exclude all except final model)
 runs/train/
+!runs/train/asl_detection/
+!runs/train/asl_detection/weights/
 !runs/train/asl_detection/weights/best.pt
+!runs/train/asl_detection/results.csv
+
+# Evaluation results (keep confusion matrix)
+runs/eval/
+!runs/eval/confusion_matrix_detailed.png
+
+# Dataset (too large for GitHub - document externally)
+train/
+valid/
+test/
+data/
+
+# Environment variables
 .env
+.env.local
+
+# Model exports (optional - can be regenerated)
+*.onnx
+*.tflite
+*.mlmodel
+*.bin
+
+# Large temporary files
+*.h5
+*.hdf5
+*.caffemodel
