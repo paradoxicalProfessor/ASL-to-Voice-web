@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL to Voice - Real-time Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .shortcuts-hint {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 0.85em;
+            font-style: italic;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .video-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        #video-feed {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .detection-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-box {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+        }
+
+        .info-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .controls-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .output-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #667eea;
+        }
+
+        .output-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .output-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            min-height: 40px;
+            word-wrap: break-word;
+        }
+
+        .sentence-box {
+            min-height: 80px;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .button-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .status-message {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            color: #0066cc;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .detection-info,
+            .button-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-grid-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤟 ASL to Voice</h1>
+        <p class="subtitle">Real-time Sign Language Detection & Translation</p>
+        <p class="shortcuts-hint">⌨️ Keyboard Shortcuts: ENTER=Add Letter • SPACE=Add Word • S=Speak • D=Delete • C=Clear • R=Reset</p>
+
+        <div class="main-grid">
+            <!-- Video Section -->
+            <div class="video-section">
+                <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Video Feed">
+                
+                <div class="detection-info">
+                    <div class="info-box">
+                        <div class="info-label">Instant Detection</div>
+                        <div class="info-value" id="instant-detection">—</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">Stable Letter</div>
+                        <div class="info-value" id="stable-letter">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="controls-section">
+                <div class="output-box">
+                    <div class="output-label">Current Word</div>
+                    <div class="output-value" id="current-word">—</div>
+                </div>
+
+                <div class="output-box sentence-box">
+                    <div class="output-label">Sentence</div>
+                    <div class="output-value" id="sentence">—</div>
+                </div>
+
+                <div class="button-grid">
+                    <button class="btn-primary" onclick="addLetter()">Add Letter [ENTER]</button>
+                    <button class="btn-secondary" onclick="addSpace()">Add Word [SPACE]</button>
+                </div>
+
+                <div class="button-grid-3">
+                    <button class="btn-info" onclick="addPunct('.')">. Period</button>
+                    <button class="btn-info" onclick="addPunct(',')">, Comma</button>
+                    <button class="btn-secondary" onclick="deleteChar()">Delete [D]</button>
+                </div>
+
+                <div class="button-grid-3">
+                    <button class="btn-info" onclick="addPunct('?')">? Question</button>
+                    <button class="btn-info" onclick="addPunct('!')">! Exclaim</button>
+                    <button class="btn-secondary" onclick="clearWord()">Clear [C]</button>
+                </div>
+
+                <div class="button-grid">
+                    <button class="btn-danger" onclick="resetAll()">Reset All [R]</button>
+                    <button class="btn-success" onclick="speak()">🔊 Speak [S]</button>
+                </div>
+
+                <div id="status-message" class="status-message">Ready to detect signs</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update detection status every 200ms
+        setInterval(updateDetection, 200);
+
+        function updateDetection() {
+            fetch('/get_detection')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('instant-detection').textContent = data.instant_letter;
+                    document.getElementById('stable-letter').textContent = 
+                        data.stable_letter + (data.stable_confidence !== '—' ? ' (' + data.stable_confidence + ')' : '');
+                    document.getElementById('current-word').textContent = data.current_word || '—';
+                    document.getElementById('sentence').textContent = data.sentence || '—';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Ignore if typing in input field
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            switch(event.key.toLowerCase()) {
+                case ' ':  // Spacebar - Add word/space
+                    event.preventDefault();
+                    addSpace();
+                    break;
+                case 'enter':  // Enter - Add letter
+                    event.preventDefault();
+                    addLetter();
+                    break;
+                case 's':  // S - Speak
+                    event.preventDefault();
+                    speak();
+                    break;
+                case 'd':  // D - Delete character
+                    event.preventDefault();
+                    deleteChar();
+                    break;
+                case 'c':  // C - Clear word
+                    event.preventDefault();
+                    clearWord();
+                    break;
+                case 'r':  // R - Reset all
+                    event.preventDefault();
+                    resetAll();
+                    break;
+                case '.':  // Period
+                    event.preventDefault();
+                    addPunct('.');
+                    break;
+                case ',':  // Comma
+                    event.preventDefault();
+                    addPunct(',');
+                    break;
+                case '?':  // Question mark
+                    event.preventDefault();
+                    addPunct('?');
+                    break;
+                case '!':  // Exclamation mark
+                    event.preventDefault();
+                    addPunct('!');
+                    break;
+            }
+        });
+
+        // Show keyboard shortcuts hint on page load
+        window.addEventListener('load', function() {
+            showStatus('Keyboard shortcuts: ENTER=Add Letter | SPACE=Add Word | S=Speak | D=Delete | C=Clear | R=Reset', 'info');
+        });
+
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.className = 'status-message ' + type;
+        }
+
+        function addLetter() {
+            fetch('/add_letter', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    showStatus(data.message, data.success ? 'success' : 'error');
+                    if (data.success) {
+                        document.getElementById('current-word').textContent = data.current_word || '—';
+                        document.getElementById('sentence').textContent = data.sentence || '—';
+                    }
+                });
+        }
+
+        function addSpace() {
+            fetch('/add_space', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    showStatus(data.message, data.success ? 'success' : 'error');
+                    if (data.success) {
+                        document.getElementById('current-word').textContent = data.current_word || '—';
+                        document.getElementById('sentence').textContent = data.sentence || '—';
+                    }
+                });
+        }
+
+        function addPunct(punct) {
+            fetch('/add_punct', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ punct: punct })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showStatus(data.message, data.success ? 'success' : 'error');
+                    if (data.success) {
+                        document.getElementById('current-word').textContent = data.current_word || '—';
+                        document.getElementById('sentence').textContent = data.sentence || '—';
+                    }
+                });
+        }
+
+        function deleteChar() {
+            fetch('/delete_char', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    showStatus(data.message, data.success ? 'success' : 'error');
+                    document.getElementById('current-word').textContent = data.current_word || '—';
+                    document.getElementById('sentence').textContent = data.sentence || '—';
+                });
+        }
+
+        function clearWord() {
+            fetch('/clear_word', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    showStatus(data.message, data.success ? 'success' : 'error');
+                    document.getElementById('current-word').textContent = data.current_word || '—';
+                    document.getElementById('sentence').textContent = data.sentence || '—';
+                });
+        }
+
+        function resetAll() {
+            if (confirm('Reset everything? This will clear all text.')) {
+                fetch('/reset_all', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        showStatus(data.message, data.success ? 'success' : 'error');
+                        document.getElementById('current-word').textContent = data.current_word || '—';
+                        document.getElementById('sentence').textContent = data.sentence || '—';
+                    });
+            }
+        }
+
+        function speak() {
+            fetch('/speak', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showStatus(data.message, 'success');
+                        // Use Web Speech API
+                        const utterance = new SpeechSynthesisUtterance(data.text);
+                        utterance.rate = 0.9;
+                        utterance.pitch = 1.0;
+                        window.speechSynthesis.speak(utterance);
+                    } else {
+                        showStatus(data.message, 'error');
+                    }
+                });
+        }
+    </script>
+</body>
+</html>
