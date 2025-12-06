@@ -1,55 +1,7 @@
-# YOLOv8 ASL Detection - Requirements
-# Python 3.8+ required
-
-# Core Dependencies
-ultralytics>=8.0.0        # YOLOv8 framework
-torch>=2.0.0              # PyTorch (GPU support)
-torchvision>=0.15.0       # PyTorch vision utilities
-
-# Computer Vision
-opencv-python>=4.8.0      # OpenCV for image/video processing
-opencv-contrib-python     # Additional OpenCV modules
-numpy>=1.24.0             # Numerical operations
-Pillow>=10.0.0            # Image processing
-
-# Model Export
-onnx>=1.14.0              # ONNX export
-onnxruntime>=1.15.0       # ONNX runtime (CPU)
-# onnxruntime-gpu>=1.15.0 # Uncomment for GPU-accelerated ONNX
-tensorflow>=2.13.0        # TensorFlow for TFLite export
-# coremltools>=7.0        # Uncomment for CoreML export (macOS)
-# openvino>=2023.0        # Uncomment for OpenVINO export
-
-# Text-to-Speech
-pyttsx3>=2.90             # Cross-platform TTS
-# gTTS>=2.3.0             # Alternative: Google TTS (requires internet)
-
-# Web Application
-flask>=3.0.0              # Web framework
-flask-cors>=4.0.0         # CORS support
-gunicorn>=21.0.0          # Production WSGI server
-
-# Evaluation & Visualization
-matplotlib>=3.7.0         # Plotting and visualization
-seaborn>=0.12.0           # Statistical visualizations
-scikit-learn>=1.3.0       # Machine learning metrics
-pandas>=2.0.0             # Data manipulation
-tqdm>=4.66.0              # Progress bars
-
-# Data Processing
-PyYAML>=6.0               # YAML file handling
-scipy>=1.11.0             # Scientific computing
-
-# Optional: Jupyter Notebook support
-# jupyter>=1.0.0
-# ipywidgets>=8.0.0
-
-# Optional: Advanced features
-# albumentations>=1.3.0   # Advanced image augmentation
-# tensorboard>=2.13.0     # Training visualization
-# wandb>=0.15.0           # Weights & Biases integration
-
-# GPU Support (CUDA)
-# Ensure you have CUDA Toolkit installed if using GPU
-# PyTorch with CUDA: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-# Or visit: https://pytorch.org/get-started/locally/
+gradio>=5.0.0
+ultralytics>=8.0.0
+opencv-python-headless
+numpy<2.0.0
+torch
+torchvision
+Pillow
