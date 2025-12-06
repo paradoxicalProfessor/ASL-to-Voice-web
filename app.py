@@ -180,6 +180,7 @@ with gr.Blocks(title="ASL to Voice") as demo:
     with gr.Row():
         with gr.Column():
             webcam_input = gr.Image(label="Webcam", sources=["webcam"], type="numpy")
+            annotated_output = gr.Image(label="Detection Result", type="numpy")
             detect_btn = gr.Button("Capture & Detect", variant="primary")
             
             with gr.Row():
@@ -205,7 +206,7 @@ with gr.Blocks(title="ASL to Voice") as demo:
                 reset_btn = gr.Button("Reset All", variant="stop")
     
     # Event handlers
-    detect_btn.click(detect_sign, inputs=[webcam_input], outputs=[webcam_input, raw_out, stable_out, word_out, sent_out])
+    detect_btn.click(detect_sign, inputs=[webcam_input], outputs=[annotated_output, raw_out, stable_out, word_out, sent_out])
     add_btn.click(add_letter, outputs=[word_out, sent_out, status_out])
     space_btn.click(add_space, outputs=[word_out, sent_out, status_out])
     period_btn.click(lambda: add_punct("."), outputs=[word_out, sent_out, status_out])
