@@ -168,7 +168,14 @@ def reset_all():
     return current_word, " ".join(sentence), "✅ Reset complete"
 
 # Create Gradio interface
-with gr.Blocks(title="ASL to Voice", theme=gr.themes.Soft()) as demo:
+try:
+    # Gradio 4.x compatibility
+    demo = gr.Blocks(title="ASL to Voice", theme=gr.themes.Soft())
+except:
+    # Fallback for older/newer versions
+    demo = gr.Blocks(title="ASL to Voice")
+
+with demo:
     gr.Markdown("""
     # 🤟 ASL to Voice - Sign Language Detection
     
