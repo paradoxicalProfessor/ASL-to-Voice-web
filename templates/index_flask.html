@@ -61,10 +61,20 @@
             padding: 20px;
         }
 
-        #video-feed {
+        #webcam-video, #output-canvas {
             width: 100%;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: block;
+        }
+
+        #webcam-video {
+            display: none;
+        }
+
+        .camera-controls {
+            margin-top: 10px;
+            text-align: center;
         }
 
         .detection-info {
@@ -246,7 +256,11 @@
         <div class="main-grid">
             <!-- Video Section -->
             <div class="video-section">
-                <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Video Feed">
+                <video id="webcam-video" autoplay playsinline></video>
+                <canvas id="output-canvas"></canvas>
+                <div class="camera-controls">
+                    <button id="start-camera-btn" class="btn-success" onclick="startCamera()">Start Camera</button>
+                </div>
                 
                 <div class="detection-info">
                     <div class="info-box">
@@ -300,16 +314,139 @@
     </div>
 
     <script>
-        // Update detection status every 200ms
-        setInterval(updateDetection, 200);
+        let video, canvas, ctx;
+        let isProcessing = false;
+        let processingInterval;
 
-        function updateDetection() {
+        // Auto-start camera on page load
+        window.addEventListener('load', function() {
+            setTimeout(startCamera, 500);
+        });
+
+        async function startCamera() {
+            try {
+                video = document.getElementById('webcam-video');
+                canvas = document.getElementById('output-canvas');
+                ctx = canvas.getContext('2d');
+
+                // Check if getUserMedia is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showStatus('Camera not supported in this browser. Please use Chrome or Firefox with HTTPS.', 'error');
+                    return;
+                }
+
+                showStatus('Requesting camera access...', 'info');
+
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    } 
+                });
+                
+                video.srcObject = stream;
+                video.style.display = 'none';
+                
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    document.getElementById('start-camera-btn').style.display = 'none';
+                    showStatus('Camera started! Processing frames...', 'success');
+                    startProcessing();
+                };
+
+                // Start video playback
+                video.play().catch(e => {
+                    showStatus('Video playback error: ' + e.message, 'error');
+                });
+
+            } catch (error) {
+                console.error('Camera error:', error);
+                let errorMsg = 'Camera access denied: ' + error.message;
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMsg = 'Camera permission denied. Please allow camera access and refresh the page.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMsg = 'No camera found. Please connect a camera and refresh.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMsg = 'Camera not supported. Please use HTTPS and a modern browser (Chrome/Firefox).';
+                }
+                
+                showStatus(errorMsg, 'error');
+                document.getElementById('start-camera-btn').style.display = 'block';
+            }
+        }
+
+        function startProcessing() {
+            processingInterval = setInterval(processFrame, 300); // Process every 300ms for better performance
+        }
+
+        async function processFrame() {
+            if (isProcessing || !video || video.paused || video.ended || video.readyState !== video.HAVE_ENOUGH_DATA) {
+                return;
+            }
+            
+            isProcessing = true;
+
+            try {
+                // Draw current video frame to canvas
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Get image data as base64
+                const imageData = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // Send to server for processing
+                const response = await fetch('/process_frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData }),
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        console.error('Server error:', data.error);
+                    } else {
+                        // Display processed image
+                        const img = new Image();
+                        img.onload = () => {
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        };
+                        img.onerror = () => {
+                            console.error('Failed to load processed image');
+                        };
+                        img.src = data.processed_image;
+                        
+                        // Update detection info
+                        document.getElementById('instant-detection').textContent = 
+                            data.detected_letter + (data.confidence !== '—' ? ' (' + data.confidence + ')' : '');
+                        document.getElementById('stable-letter').textContent = 
+                            data.smoothed_letter + (data.smoothed_conf !== '—' ? ' (' + data.smoothed_conf + ')' : '');
+                        
+                        // Update word and sentence from server
+                        updateTextStatus();
+                    }
+                } else {
+                    console.error('HTTP error:', response.status);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                    console.log('Request timeout, retrying...');
+                } else {
+                    console.error('Processing error:', error);
+                }
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        function updateTextStatus() {
             fetch('/get_detection')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('instant-detection').textContent = data.instant_letter;
-                    document.getElementById('stable-letter').textContent = 
-                        data.stable_letter + (data.stable_confidence !== '—' ? ' (' + data.stable_confidence + ')' : '');
                     document.getElementById('current-word').textContent = data.current_word || '—';
                     document.getElementById('sentence').textContent = data.sentence || '—';
                 })

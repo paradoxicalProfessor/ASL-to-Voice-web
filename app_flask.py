@@ -82,31 +82,39 @@ def index():
     """Render main page"""
     return render_template('index_flask.html')
 
-@app.route('/video_feed')
-def video_feed():
-    """Video streaming route"""
-    def generate():
-        cap = cv2.VideoCapture(0)
+@app.route('/process_frame', methods=['POST'])
+def process_frame_route():
+    """Process a frame sent from the browser"""
+    try:
+        data = request.json
+        image_data = data.get('image')
         
-        try:
-            while True:
-                success, frame = cap.read()
-                if not success:
-                    break
-                
-                # Process frame
-                processed_frame, _, _, _, _ = process_frame(frame)
-                
-                # Encode frame
-                ret, buffer = cv2.imencode('.jpg', processed_frame)
-                frame_bytes = buffer.tobytes()
-                
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-        finally:
-            cap.release()
+        if not image_data:
+            return jsonify({'error': 'No image data'}), 400
+        
+        # Decode base64 image
+        image_data = image_data.split(',')[1]  # Remove data:image/jpeg;base64,
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        # Process frame
+        processed_frame, detected_letter, confidence, smoothed_letter, smoothed_conf = process_frame(frame)
+        
+        # Encode processed frame back to base64
+        ret, buffer = cv2.imencode('.jpg', processed_frame)
+        processed_base64 = base64.b64encode(buffer).decode('utf-8')
+        
+        return jsonify({
+            'processed_image': f'data:image/jpeg;base64,{processed_base64}',
+            'detected_letter': detected_letter if detected_letter else '—',
+            'confidence': f'{confidence:.0%}' if detected_letter else '—',
+            'smoothed_letter': smoothed_letter if smoothed_letter else '—',
+            'smoothed_conf': f'{smoothed_conf:.0%}' if smoothed_letter else '—'
+        })
     
-    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/get_detection')
 def get_detection():
