@@ -28,7 +28,8 @@ def load_model():
     global model
     if model is None:
         print("Loading YOLOv8 model...")
-        model = YOLO('runs/train/asl_detection/weights/best.pt')
+        model = YOLO('combined_dataset/runs/detect/train/weights/best.pt')
+        
         print("Model loaded successfully")
     return model
 

@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 25
+names: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y']
+
+roboflow:
+  workspace: nachts-workspace
+  project: asl_to_voice_label
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/nachts-workspace/asl_to_voice_label/dataset/1
