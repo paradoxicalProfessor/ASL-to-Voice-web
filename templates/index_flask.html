@@ -270,6 +270,7 @@
                     <div class="info-box">
                         <div class="info-label">Stable Letter</div>
                         <div class="info-value" id="stable-letter">—</div>
+                        <div class="info-label" style="font-size: 0.75em; margin-top: 5px;">History: <span id="history-count">0</span>/5</div>
                     </div>
                 </div>
             </div>
@@ -353,7 +354,8 @@
                     canvas.height = video.videoHeight || 480;
                     document.getElementById('start-camera-btn').style.display = 'none';
                     showStatus('Camera started! Processing frames...', 'success');
-                    startProcessing();
+                    startLiveDisplay();  // Start continuous display
+                    startProcessing();   // Start detection processing
                 };
 
                 // Start video playback
@@ -378,8 +380,28 @@
             }
         }
 
+        let lastProcessedImage = null;
+
+        function startLiveDisplay() {
+            // Continuously display either processed frame (with boxes) or raw webcam
+            function updateDisplay() {
+                if (!video || video.paused || video.ended) return;
+                
+                if (lastProcessedImage) {
+                    // Display the processed frame with bounding boxes
+                    ctx.drawImage(lastProcessedImage, 0, 0, canvas.width, canvas.height);
+                } else if (!isProcessing) {
+                    // Display raw webcam if no processed frame yet
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                }
+                
+                requestAnimationFrame(updateDisplay);
+            }
+            updateDisplay();
+        }
+
         function startProcessing() {
-            processingInterval = setInterval(processFrame, 300); // Process every 300ms for better performance
+            processingInterval = setInterval(processFrame, 150); // Process every 150ms for smoother video
         }
 
         async function processFrame() {
@@ -393,8 +415,8 @@
                 // Draw current video frame to canvas
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Get image data as base64
-                const imageData = canvas.toDataURL('image/jpeg', 0.7);
+                // Get image data as base64 with better quality
+                const imageData = canvas.toDataURL('image/jpeg', 0.85);
                 
                 // Send to server for processing
                 const response = await fetch('/process_frame', {
@@ -410,10 +432,10 @@
                     if (data.error) {
                         console.error('Server error:', data.error);
                     } else {
-                        // Display processed image
+                        // Load and cache processed image with bounding boxes
                         const img = new Image();
                         img.onload = () => {
-                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            lastProcessedImage = img; // Store for continuous display
                         };
                         img.onerror = () => {
                             console.error('Failed to load processed image');
@@ -425,6 +447,9 @@
                             data.detected_letter + (data.confidence !== '—' ? ' (' + data.confidence + ')' : '');
                         document.getElementById('stable-letter').textContent = 
                             data.smoothed_letter + (data.smoothed_conf !== '—' ? ' (' + data.smoothed_conf + ')' : '');
+                        
+                        // Update history count
+                        updateTextStatus();
                         
                         // Update word and sentence from server
                         updateTextStatus();
@@ -448,6 +473,7 @@
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('current-word').textContent = data.current_word || '—';
+                    document.getElementById('history-count').textContent = data.history_count || 0;
                     document.getElementById('sentence').textContent = data.sentence || '—';
                 })
                 .catch(error => console.error('Error:', error));
